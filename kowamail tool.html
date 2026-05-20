@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📢 講話メール送付ツール</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #f5f3ee;
+    --surface: #ffffff;
+    --surface2: #faf9f6;
+    --border: #e0dcd4;
+    --border2: #ccc8bf;
+    --text: #1a1814;
+    --text2: #5a5650;
+    --text3: #8a8680;
+    --accent: #2d5a3d;
+    --accent2: #3d7a52;
+    --accent-light: #e8f2eb;
+    --warn: #c0392b;
+    --warn-light: #fdf0ef;
+    --tag: #f0ede7;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  header {
+    background: var(--text);
+    color: #fff;
+    padding: 14px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  header h1 { font-size: 15px; font-weight: 500; letter-spacing: 0.04em; }
+  #clock { font-family: 'DM Mono', monospace; font-size: 12px; opacity: 0.6; }
+
+  main { max-width: 820px; margin: 0 auto; padding: 24px 16px 60px; }
+
+  .step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .step-header {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .step-num {
+    background: var(--accent);
+    color: #fff;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .step-title { font-size: 13px; font-weight: 500; color: var(--text2); }
+  .step-body { padding: 18px; }
+
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media(max-width: 500px) { .row2 { grid-template-columns: 1fr; } }
+
+  label { display: block; font-size: 12px; color: var(--text3); margin-bottom: 5px; font-weight: 500; }
+  input[type=text], textarea {
+    width: 100%;
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 9px 11px;
+    font-family: inherit;
+    font-size: 13px;
+    background: var(--surface);
+    color: var(--text);
+    transition: border 0.2s;
+    outline: none;
+  }
+  input[type=text]:focus, textarea:focus { border-color: var(--accent2); }
+  textarea { resize: vertical; min-height: 90px; }
+
+  .field { margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 16px;
+    border-radius: 7px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-secondary {
+    background: var(--tag);
+    color: var(--text2);
+    border: 1px solid var(--border2);
+  }
+  .btn-secondary:hover { background: var(--border); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+
+  /* 送付先リスト */
+  #client-list { margin-top: 14px; }
+  .client-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    margin-bottom: 8px;
+    background: var(--surface2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .client-item:hover { border-color: var(--accent2); }
+  .client-item.selected { border-color: var(--accent); background: var(--accent-light); }
+  .client-check {
+    width: 18px; height: 18px;
+    border: 2px solid var(--border2);
+    border-radius: 4px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    transition: all 0.15s;
+  }
+  .client-item.selected .client-check { background: var(--accent); border-color: var(--accent); }
+  .client-check svg { display: none; }
+  .client-item.selected .client-check svg { display: block; }
+  .client-info { flex: 1; min-width: 0; }
+  .client-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .client-email { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+  .client-meta { font-size: 11px; color: var(--text3); white-space: nowrap; }
+
+  .select-ctrl { display: flex; gap: 8px; margin-bottom: 12px; }
+  .sel-count { font-size: 12px; color: var(--text3); margin-left: auto; align-self: center; }
+
+  /* プレビュー */
+  #preview-area { margin-top: 14px; }
+  .preview-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+  .preview-card-header {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .preview-to { font-size: 12px; color: var(--text3); }
+  .preview-to strong { color: var(--text); font-size: 13px; }
+  .preview-body { padding: 14px; white-space: pre-wrap; font-size: 13px; line-height: 1.8; color: var(--text2); }
+
+  /* ステータスバー */
+  #status-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    padding: 12px 24px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 100;
+    transition: all 0.3s;
+  }
+  #status-dot { width: 8px; height: 8px; border-radius: 50%; background: #ccc; flex-shrink: 0; }
+  #status-dot.ok { background: #27ae60; }
+  #status-dot.err { background: var(--warn); }
+  #status-dot.loading { background: var(--accent); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  #status-text { font-size: 13px; color: var(--text2); flex: 1; }
+  .progress-bar { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; width: 120px; }
+  .progress-fill { height: 100%; background: var(--accent); width: 0; transition: width 0.3s; }
+
+  .err-box {
+    background: var(--warn-light);
+    border: 1px solid #f5c6c4;
+    border-radius: 7px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--warn);
+    margin-top: 10px;
+  }
+  .tag {
+    display: inline-block;
+    background: var(--tag);
+    color: var(--text2);
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 11px;
+  }
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .gmail-result {
+    margin-top: 10px;
+    padding: 10px 14px;
+    border-radius: 7px;
+    font-size: 13px;
+  }
+  .gmail-result.ok { background: var(--accent-light); color: var(--accent); }
+  .gmail-result.err { background: var(--warn-light); color: var(--warn); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📢 講話メール送付ツール</h1>
+  <span id="clock"></span>
+</header>
+
+<main>
+
+  <!-- STEP 1: 講話情報 -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num">1</div>
+      <div class="step-title">今月の講話情報</div>
+    </div>
+    <div class="step-body">
+      <div class="row2">
+        <div class="field">
+          <label>講話テーマ</label>
+          <input type="text" id="theme" placeholder="例: 熱中症予防" />
+        </div>
+        <div class="field">
+          <label>メール件名</label>
+          <input type="text" id="subject" placeholder="例: 【健康講話】6月号のご案内" />
+        </div>
+      </div>
+      <div class="field">
+        <label>講話のポイント（2〜3点）</label>
+        <textarea id="points" placeholder="例:&#10;・熱中症の初期症状の見分け方&#10;・職場でできる予防策&#10;・緊急時の対応手順"></textarea>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>添付ファイル名（任意）</label>
+          <input type="text" id="attachment" placeholder="例: 202506_熱中症予防" />
+        </div>
+        <div class="field">
+          <label>署名（送信者名）</label>
+          <input type="text" id="signature" value="産業医　松平　登志子" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: 送付先 -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num">2</div>
+      <div class="step-title">送付先（Notionから自動取得）</div>
+    </div>
+    <div class="step-body">
+      <button class="btn btn-secondary" id="btn-load" onclick="loadClients()">
+        <span>📋</span> Notionから読み込む
+        <div class="spinner" id="load-spinner"></div>
+      </button>
+      <div id="load-err"></div>
+
+      <div id="client-list" style="display:none">
+        <div class="select-ctrl">
+          <button class="btn btn-secondary" onclick="selectAll(true)" style="padding:5px 10px;font-size:12px">全選択</button>
+          <button class="btn btn-secondary" onclick="selectAll(false)" style="padding:5px 10px;font-size:12px">全解除</button>
+          <span class="sel-count" id="sel-count">0件選択</span>
+        </div>
+        <div id="clients-container"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3: メール生成・送付 -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num">3</div>
+      <div class="step-title">メール生成 → Gmail下書き保存</div>
+    </div>
+    <div class="step-body">
+      <div class="btn-row">
+        <button class="btn btn-secondary" id="btn-preview" onclick="generatePreviews()" disabled>
+          ✉️ 本文を生成する
+          <div class="spinner" id="preview-spinner"></div>
+        </button>
+        <button class="btn btn-primary" id="btn-send" onclick="saveAllDrafts()" disabled>
+          📨 全件 Gmail下書き保存
+          <div class="spinner" id="send-spinner"></div>
+        </button>
+      </div>
+      <div id="preview-area"></div>
+      <div id="gmail-result"></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ステータスバー -->
+<div id="status-bar">
+  <div id="status-dot"></div>
+  <span id="status-text">準備完了</span>
+  <div class="progress-bar" id="progress-bar" style="display:none">
+    <div class="progress-fill" id="progress-fill"></div>
+  </div>
+</div>
+
+<script>
+// ===== 状態管理 =====
+let clients = [];      // [{name, email, contact}]
+let previews = {};     // {email: {subject, body}}
+
+// ===== 時計 =====
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleDateString('ja-JP', {year:'numeric',month:'long',day:'numeric',weekday:'short'})
+    + ' ' + now.toTimeString().slice(0,5);
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ===== ステータス =====
+function setStatus(type, msg, progress) {
+  const dot = document.getElementById('status-dot');
+  dot.className = type; // ok, err, loading, ''
+  document.getElementById('status-text').textContent = msg;
+  const pb = document.getElementById('progress-bar');
+  if (progress !== undefined) {
+    pb.style.display = 'block';
+    document.getElementById('progress-fill').style.width = progress + '%';
+  } else {
+    pb.style.display = 'none';
+  }
+}
+
+// ===== スピナー制御 =====
+function showSpinner(id, show) {
+  document.getElementById(id).style.display = show ? 'inline-block' : 'none';
+}
+
+// ===== Anthropic API呼び出し共通 =====
+async function callClaude(systemPrompt, userMessage, mcpServers = []) {
+  const body = {
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 1000,
+    system: systemPrompt,
+    messages: [{ role: "user", content: userMessage }]
+  };
+  if (mcpServers.length > 0) {
+    body.mcp_servers = mcpServers;
+  }
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || `API error ${res.status}`);
+  }
+  return res.json();
+}
+
+// ===== STEP2: Notionから読み込み =====
+async function loadClients() {
+  const btn = document.getElementById('btn-load');
+  btn.disabled = true;
+  showSpinner('load-spinner', true);
+  document.getElementById('load-err').innerHTML = '';
+  document.getElementById('client-list').style.display = 'none';
+  setStatus('loading', 'Notionから送付先を読み込んでいます…');
+
+  try {
+    const data = await callClaude(
+      `あなたはNotionデータベースから情報を取得するアシスタントです。
+「訪問先マスター（産業医）」データベース（ID: d362239d-2b37-4cdc-98c8-32e935719642）から、
+「📢 講話送付」チェックボックスがtrueのレコードを全件取得し、
+以下のJSON配列のみを返してください。他のテキストは一切不要です。
+[{"name":"企業名","contact":"担当者名","email":"担当者連絡先"}]
+メールアドレスが空のレコードは除外してください。`,
+      '訪問先マスターから講話送付対象を取得してください。',
+      [{ type: "url", url: "https://mcp.notion.com/mcp", name: "notion" }]
+    );
+
+    // レスポンスからJSONを抽出
+    let jsonText = '';
+    for (const block of data.content) {
+      if (block.type === 'text') jsonText += block.text;
+      if (block.type === 'mcp_tool_result') {
+        const t = block.content?.[0]?.text || '';
+        jsonText += t;
+      }
+    }
+
+    // JSON配列を抽出
+    const match = jsonText.match(/\[[\s\S]*\]/);
+    if (!match) throw new Error('送付先データを取得できませんでした。Notionの接続を確認してください。');
+
+    clients = JSON.parse(match[0]).filter(c => c.email);
+
+    if (clients.length === 0) {
+      throw new Error('「📢 講話送付」がオンの送付先が見つかりませんでした。');
+    }
+
+    renderClients();
+    document.getElementById('client-list').style.display = 'block';
+    document.getElementById('btn-preview').disabled = false;
+    setStatus('ok', `${clients.length}件の送付先を読み込みました`);
+
+  } catch(e) {
+    document.getElementById('load-err').innerHTML = `<div class="err-box">⚠️ ${e.message}</div>`;
+    setStatus('err', 'エラーが発生しました');
+  } finally {
+    btn.disabled = false;
+    showSpinner('load-spinner', false);
+  }
+}
+
+function renderClients() {
+  const container = document.getElementById('clients-container');
+  container.innerHTML = '';
+  clients.forEach((c, i) => {
+    const div = document.createElement('div');
+    div.className = 'client-item selected';
+    div.dataset.index = i;
+    div.onclick = () => toggleClient(i);
+    div.innerHTML = `
+      <div class="client-check">
+        <svg width="11" height="9" viewBox="0 0 11 9" fill="none">
+          <path d="M1 4L4 7L10 1" stroke="white" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="client-info">
+        <div class="client-name">${escHtml(c.name)}</div>
+        <div class="client-email">${escHtml(c.email)}</div>
+      </div>
+      <div class="client-meta">${c.contact ? escHtml(c.contact) : ''}</div>
+    `;
+    container.appendChild(div);
+  });
+  updateSelCount();
+}
+
+function toggleClient(i) {
+  const items = document.querySelectorAll('.client-item');
+  items[i].classList.toggle('selected');
+  updateSelCount();
+}
+
+function selectAll(val) {
+  document.querySelectorAll('.client-item').forEach(el => {
+    if (val) el.classList.add('selected');
+    else el.classList.remove('selected');
+  });
+  updateSelCount();
+}
+
+function updateSelCount() {
+  const n = document.querySelectorAll('.client-item.selected').length;
+  document.getElementById('sel-count').textContent = `${n}件選択`;
+  document.getElementById('btn-preview').disabled = n === 0;
+  document.getElementById('btn-send').disabled = Object.keys(previews).length === 0 || n === 0;
+}
+
+function getSelectedClients() {
+  const selected = [];
+  document.querySelectorAll('.client-item.selected').forEach(el => {
+    selected.push(clients[parseInt(el.dataset.index)]);
+  });
+  return selected;
+}
+
+// ===== STEP3: メール本文生成 =====
+async function generatePreviews() {
+  const selected = getSelectedClients();
+  if (selected.length === 0) return;
+
+  const theme = document.getElementById('theme').value.trim();
+  const subjectBase = document.getElementById('subject').value.trim();
+  const points = document.getElementById('points').value.trim();
+  const attachment = document.getElementById('attachment').value.trim();
+  const sig = document.getElementById('signature').value.trim();
+
+  if (!theme || !subjectBase || !points) {
+    setStatus('err', '講話テーマ・件名・ポイントを入力してください');
+    return;
+  }
+
+  const btn = document.getElementById('btn-preview');
+  btn.disabled = true;
+  showSpinner('preview-spinner', true);
+  previews = {};
+  document.getElementById('preview-area').innerHTML = '';
+  document.getElementById('gmail-result').innerHTML = '';
+
+  setStatus('loading', 'メール本文を生成しています…', 0);
+
+  const systemPrompt = `あなたは産業医のメール文章作成アシスタントです。
+産業医から企業の健康担当者に送る月次健康講話のご案内メールを作成してください。
+
+ルール：
+- 丁寧だが簡潔なビジネスメール
+- 宛名は「〇〇 様」形式（担当者名が不明な場合は「ご担当者」）
+- 講話のポイントを箇条書きで自然に組み込む
+- 添付ファイルがある場合は「本メールにPDFを添付しております」と記載
+- 署名は必ず末尾に入れる
+- JSON形式で返すこと: {"subject":"件名","body":"本文"}
+- 他のテキストは一切不要`;
+
+  for (let i = 0; i < selected.length; i++) {
+    const c = selected[i];
+    const progress = Math.round((i / selected.length) * 100);
+    setStatus('loading', `生成中… ${c.name} (${i+1}/${selected.length})`, progress);
+
+    try {
+      const userMsg = `
+企業名: ${c.name}
+担当者名: ${c.contact || 'ご担当者'}
+講話テーマ: ${theme}
+希望件名: ${subjectBase}
+講話のポイント:
+${points}
+添付ファイル: ${attachment || 'なし'}
+署名: ${sig}
+`;
+      const data = await callClaude(systemPrompt, userMsg);
+      let text = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+      const m = text.match(/\{[\s\S]*\}/);
+      if (m) {
+        const parsed = JSON.parse(m[0]);
+        previews[c.email] = { subject: parsed.subject, body: parsed.body, name: c.name, contact: c.contact };
+      }
+    } catch(e) {
+      console.error('生成エラー', c.name, e);
+    }
+  }
+
+  renderPreviews();
+  setStatus('ok', `${Object.keys(previews).length}件のメールを生成しました`);
+  btn.disabled = false;
+  showSpinner('preview-spinner', false);
+  document.getElementById('btn-send').disabled = Object.keys(previews).length === 0;
+}
+
+function renderPreviews() {
+  const area = document.getElementById('preview-area');
+  area.innerHTML = '';
+  for (const [email, p] of Object.entries(previews)) {
+    const card = document.createElement('div');
+    card.className = 'preview-card';
+    card.innerHTML = `
+      <div class="preview-card-header">
+        <div class="preview-to">
+          <strong>${escHtml(p.name)}</strong>
+          ${p.contact ? `<span class="tag">${escHtml(p.contact)}</span>` : ''}
+        </div>
+        <span style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace">${escHtml(email)}</span>
+      </div>
+      <div style="padding:8px 14px;background:var(--surface2);border-bottom:1px solid var(--border);font-size:12px;color:var(--text3)">
+        件名: <strong style="color:var(--text)">${escHtml(p.subject)}</strong>
+      </div>
+      <div class="preview-body">${escHtml(p.body)}</div>
+    `;
+    area.appendChild(card);
+  }
+}
+
+// ===== Gmail下書き保存 =====
+async function saveAllDrafts() {
+  const selected = getSelectedClients();
+  const toSave = selected.filter(c => previews[c.email]);
+
+  if (toSave.length === 0) {
+    setStatus('err', '先にメール本文を生成してください');
+    return;
+  }
+
+  const btn = document.getElementById('btn-send');
+  btn.disabled = true;
+  showSpinner('send-spinner', true);
+  document.getElementById('gmail-result').innerHTML = '';
+  setStatus('loading', 'Gmail下書きを保存しています…', 0);
+
+  let ok = 0, fail = 0;
+
+  for (let i = 0; i < toSave.length; i++) {
+    const c = toSave[i];
+    const p = previews[c.email];
+    const progress = Math.round((i / toSave.length) * 100);
+    setStatus('loading', `下書き保存中… ${c.name} (${i+1}/${toSave.length})`, progress);
+
+    try {
+      await callClaude(
+        `あなたはGmail操作アシスタントです。指定の内容でGmailの下書きを作成してください。`,
+        `以下の内容でGmail下書きを作成してください:
+宛先: ${c.email}
+件名: ${p.subject}
+本文:
+${p.body}`,
+        [{ type: "url", url: "https://gmailmcp.googleapis.com/mcp/v1", name: "gmail" }]
+      );
+      ok++;
+    } catch(e) {
+      console.error('Gmail下書きエラー', c.name, e);
+      fail++;
+    }
+  }
+
+  const resultDiv = document.getElementById('gmail-result');
+  if (fail === 0) {
+    resultDiv.innerHTML = `<div class="gmail-result ok">✅ ${ok}件の下書きをGmailに保存しました</div>`;
+    setStatus('ok', `${ok}件の下書きを保存完了`, 100);
+  } else {
+    resultDiv.innerHTML = `<div class="gmail-result err">⚠️ ${ok}件成功 / ${fail}件失敗</div>`;
+    setStatus('err', `${fail}件でエラーが発生しました`);
+  }
+
+  btn.disabled = false;
+  showSpinner('send-spinner', false);
+}
+
+// ===== ユーティリティ =====
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
